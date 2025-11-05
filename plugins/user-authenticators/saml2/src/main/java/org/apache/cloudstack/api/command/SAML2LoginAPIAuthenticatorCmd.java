@@ -332,7 +332,7 @@ public class SAML2LoginAPIAuthenticatorCmd extends BaseCmd implements APIAuthent
                         return ApiResponseSerializer.toSerializedString(loginResponse, responseType);
                     }
                 } catch (CloudAuthenticationException | IOException exception) {
-                    logger.debug("SAML Login failed to log in the user due to: " + exception.getMessage());
+                    logger.debug("SAML Login failed to log in the user "+ username +" due to: " + exception.getMessage());
                 }
             }
         } catch (IOException e) {
