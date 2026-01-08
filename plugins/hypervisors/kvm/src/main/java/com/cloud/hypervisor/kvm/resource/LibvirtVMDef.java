@@ -1132,6 +1132,10 @@ public class LibvirtVMDef {
             this._serial = serial;
         }
 
+        public String getSerial() {
+            return _serial;
+        }
+
         public void setLibvirtDiskEncryptDetails(LibvirtDiskEncryptDetails details)
         {
             this.encryptDetails = details;
