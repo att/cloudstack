@@ -482,17 +482,19 @@ public class KvmNonManagedStorageSystemDataMotionTest {
 
     @Test
     public void testVerifyLiveMigrationMapForKVMManagedFiberChannelAllowed() {
-        when(pool1.isManaged()).thenReturn(true);
-        when(pool2.isManaged()).thenReturn(true);
-        when(pool1.getPoolType()).thenReturn(Storage.StoragePoolType.FiberChannel);
-        when(pool2.getPoolType()).thenReturn(Storage.StoragePoolType.FiberChannel);
-        when(pool1.getId()).thenReturn(POOL_1_ID);
-        when(pool2.getId()).thenReturn(POOL_2_ID);
-        when(volumeInfo1.getAttachedVM()).thenReturn(attachedVm);
-        when(volumeInfo2.getAttachedVM()).thenReturn(attachedVm);
+        lenient().when(pool1.isManaged()).thenReturn(true);
+        lenient().when(pool2.isManaged()).thenReturn(true);
+        lenient().when(pool1.getPoolType()).thenReturn(Storage.StoragePoolType.FiberChannel);
+        lenient().when(pool2.getPoolType()).thenReturn(Storage.StoragePoolType.FiberChannel);
+        lenient().when(pool1.getId()).thenReturn(POOL_1_ID);
+        lenient().when(pool2.getId()).thenReturn(POOL_2_ID);
+        lenient().when(volumeInfo1.getAttachedVM()).thenReturn(attachedVm);
         when(attachedVm.getState()).thenReturn(com.cloud.vm.VirtualMachine.State.Running);
 
-        kvmNonManagedStorageDataMotionStrategy.verifyLiveMigrationForKVM(migrationMap);
+        Map<VolumeInfo, DataStore> fiberChannelMigrationMap = new HashMap<>();
+        fiberChannelMigrationMap.put(volumeInfo1, dataStore2);
+
+        kvmNonManagedStorageDataMotionStrategy.verifyLiveMigrationForKVM(fiberChannelMigrationMap);
     }
 
     @Test(expected = CloudRuntimeException.class)
