@@ -171,7 +171,7 @@ public class VMSnapshotStrategyKVMTest extends TestCase{
         ReflectionTestUtils.setField(usageEventUtils, "accountDao", accountDao);
         ReflectionTestUtils.setField(usageEventUtils, "dcDao", dataCenterDao);
         ReflectionTestUtils.setField(usageEventUtils, "configDao", configDao);
-        usageEventUtils.init();
+        ReflectionTestUtils.invokeMethod(usageEventUtils, "init");
 
         Mockito.lenient().when(usageEventDao.persist(Mockito.any())).thenAnswer(invocation -> invocation.getArgument(0));
         Mockito.lenient().doNothing().when(usageEventDao).saveDetails(Mockito.anyLong(), Mockito.anyMap());
