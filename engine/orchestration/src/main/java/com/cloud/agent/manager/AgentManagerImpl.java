@@ -655,7 +655,7 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
         final Command[] cmds = checkForCommandsAndTag(commands);
 
         //check what agent is returned.
-        final AgentAttache agent = getAttache(hostId);
+        AgentAttache agent = getAttache(hostId);
         if (agent == null || agent.isClosed()) {
             throw new AgentUnavailableException("agent not logged into this management server", hostId);
         }
@@ -665,7 +665,41 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
 
         reconcileCommandService.persistReconcileCommands(hostId, req.getSequence(), cmds);
 
-        final Answer[] answers = agent.send(req, wait);
+        final int retries = Math.max(0, getAgentSendRetryCount());
+        final int intervalMs = Math.max(0, getAgentSendRetryIntervalMs());
+        AgentUnavailableException last = null;
+        Answer[] answers = null;
+
+        for (int attempt = 0; attempt <= retries; attempt++) {
+            if (attempt > 0 && intervalMs > 0) {
+                sleepRetry(intervalMs);
+            }
+
+            try {
+                agent = resolveAttacheForRetry(hostId, agent, attempt > 0);
+            } catch (AgentUnavailableException e) {
+                last = e;
+                continue;
+            }
+
+            if (isForwardWithoutPeer(agent, hostId)) {
+                last = new AgentUnavailableException("Unable to find peer", hostId);
+                agent = null;
+                continue;
+            }
+
+            try {
+                answers = agent.send(req, wait);
+                break;
+            } catch (AgentUnavailableException e) {
+                last = e;
+                agent = null;
+            }
+        }
+
+        if (answers == null) {
+            throw (last != null) ? last : new AgentUnavailableException("agent not logged into this management server", hostId);
+        }
 
         reconcileCommandService.processAnswers(req.getSequence(), cmds, answers);
 
@@ -705,7 +739,7 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
 
     @Override
     public long send(final Long hostId, final Commands commands, final Listener listener) throws AgentUnavailableException {
-        final AgentAttache agent = getAttache(hostId);
+        AgentAttache agent = getAttache(hostId);
         if (agent.isClosed()) {
             throw new AgentUnavailableException(String.format(
                     "Agent [id: %d, name: %s] is closed",
@@ -717,8 +751,132 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
         final Request req = new Request(hostId, agent.getName(), _nodeId, cmds, commands.stopOnError(), true);
         req.setSequence(agent.getNextSequence());
 
-        agent.send(req, listener);
+        final int retries = Math.max(0, getAgentSendRetryCount());
+        final int intervalMs = Math.max(0, getAgentSendRetryIntervalMs());
+        AgentUnavailableException last = null;
+
+        for (int attempt = 0; attempt <= retries; attempt++) {
+            if (attempt > 0 && intervalMs > 0) {
+                sleepRetry(intervalMs);
+            }
+
+            try {
+                agent = resolveAttacheForRetry(hostId, agent, attempt > 0);
+            } catch (AgentUnavailableException e) {
+                last = e;
+                continue;
+            }
+
+            if (isForwardWithoutPeer(agent, hostId)) {
+                last = new AgentUnavailableException("Unable to find peer", hostId);
+                agent = null;
+                continue;
+            }
+
+            try {
+                agent.send(req, listener);
+                last = null;
+                break;
+            } catch (AgentUnavailableException e) {
+                last = e;
+                agent = null;
+            }
+        }
+
+        if (last != null) {
+            throw last;
+        }
         return req.getSequence();
+    }
+
+    protected int getAgentSendRetryCount() {
+        return 0;
+    }
+
+    protected int getAgentSendRetryIntervalMs() {
+        return 0;
+    }
+
+    protected AgentAttache resolveAttacheForRetry(final Long hostId, final AgentAttache current, final boolean forceReload)
+            throws AgentUnavailableException {
+        AgentAttache agent = current;
+        if (forceReload || agent == null || agent.isClosed()) {
+            agent = findAttache(hostId);
+        }
+        if (agent == null || agent.isClosed()) {
+            agent = getAttache(hostId);
+        }
+        return agent;
+    }
+
+    protected boolean isForwardWithoutPeer(final AgentAttache agent, final Long hostId) {
+        if (agent == null || hostId == null) {
+            return false;
+        }
+        if (!(this instanceof ClusteredAgentManagerImpl) || !agent.forForward()) {
+            return false;
+        }
+        final ClusteredAgentManagerImpl clusteredMgr = (ClusteredAgentManagerImpl)this;
+        return clusteredMgr.getPeerName(hostId) == null;
+    }
+
+    protected void sleepRetry(final int intervalMs) {
+        try {
+            Thread.sleep(intervalMs);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    protected AgentAttache resolveAttacheForSend(final Long hostId, final AgentAttache agent) throws AgentUnavailableException {
+        if (hostId == null || agent == null) {
+            return agent;
+        }
+
+        // Only clustered forwarding attaches need peer resolution.
+        if (!(this instanceof ClusteredAgentManagerImpl) || !agent.forForward()) {
+            return agent;
+        }
+
+        final ClusteredAgentManagerImpl clusteredMgr = (ClusteredAgentManagerImpl)this;
+        if (clusteredMgr.getPeerName(hostId) != null) {
+            return agent;
+        }
+
+        final int retries = Math.max(0, clusteredMgr.getPeerLookupRetryCount());
+        final int intervalMs = Math.max(0, clusteredMgr.getPeerLookupRetryIntervalMs());
+        if (retries <= 0) {
+            return agent;
+        }
+
+        for (int attempt = 1; attempt <= retries; attempt++) {
+            if (intervalMs > 0) {
+                try {
+                    Thread.sleep(intervalMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            final AgentAttache current = findAttache(hostId);
+            if (current == null || current.isClosed()) {
+                continue;
+            }
+
+            // If the agent reconnected locally while we were retrying, use it.
+            if (!current.forForward()) {
+                return current;
+            }
+
+            // If the host ownership mapping updated to a remote MS, forwarding can proceed.
+            if (clusteredMgr.getPeerName(hostId) != null) {
+                return current;
+            }
+        }
+
+        // Preserve the original error semantics, but fail before we persist reconcile commands.
+        throw new AgentUnavailableException("Unable to find peer", hostId);
     }
 
     public void removeAgent(final AgentAttache attache, final Status nextState) {
