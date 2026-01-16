@@ -798,13 +798,11 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
     }
 
     protected int getAgentSendRetryCount() {
-        final String value = _configDao != null ? _configDao.getValue("cluster.agent.peer.lookup.retry.count") : null;
-        return NumbersUtil.parseInt(value, 1);
+        PeerLookupRetryCount.value();
     }
 
     protected int getAgentSendRetryIntervalMs() {
-        final String value = _configDao != null ? _configDao.getValue("cluster.agent.peer.lookup.retry.interval.ms") : null;
-        return NumbersUtil.parseInt(value, 200);
+        PeerLookupRetryIntervalMs.value();
     }
 
     protected AgentAttache resolveAttacheForRetry(final Long hostId, final AgentAttache current, final boolean forceReload)
