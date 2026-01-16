@@ -239,12 +239,12 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
     protected final ConfigKey<Integer> RemoteAgentNewConnectionsMonitorInterval = new ConfigKey<>("Advanced", Integer.class, "agent.connections.monitor.interval", "1800",
             "Time in seconds to monitor the new agent connections and cleanup the expired connections.", false);
 
-        protected final ConfigKey<Integer> PeerLookupRetryCount = new ConfigKey<>(Integer.class,
-            "cluster.agent.peer.lookup.retry.count", "Advanced", "1",
+        protected final ConfigKey<Integer> PeerLookupRetryCount = new ConfigKey<>("Advanced", Integer.class,
+            "agent.peer.lookup.retry.count", "1",
             "Number of retries (in addition to the initial attempt) to resolve the peer management server for a host when forwarding agent commands in a management server cluster.", true);
 
-        protected final ConfigKey<Integer> PeerLookupRetryIntervalMs = new ConfigKey<>(Integer.class,
-            "cluster.agent.peer.lookup.retry.interval.ms", "Advanced", "200",
+        protected final ConfigKey<Integer> PeerLookupRetryIntervalMs = new ConfigKey<>("Advanced", Integer.class,
+            "agent.peer.lookup.retry.interval.ms", "200",
             "Sleep interval in milliseconds between peer lookup retries when forwarding agent commands in a management server cluster.", true);
     protected final ConfigKey<Integer> AlertWait = new ConfigKey<>("Advanced", Integer.class, "alert.wait", "1800",
             "Seconds to wait before alerting on a disconnected agent", true);
