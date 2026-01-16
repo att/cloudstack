@@ -162,14 +162,6 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
     protected final ConfigKey<Integer> ScanInterval = new ConfigKey<>(Integer.class, "direct.agent.scan.interval", "Advanced", "90", "Interval between scans to load direct agents", false,
             ConfigKey.Scope.Global, 1000);
 
-        protected final ConfigKey<Integer> PeerLookupRetryCount = new ConfigKey<>(Integer.class,
-            "cluster.agent.peer.lookup.retry.count", "Advanced", "0",
-            "Number of retries (in addition to the initial attempt) to resolve the peer management server for a host when forwarding agent commands in a management server cluster.", true);
-
-        protected final ConfigKey<Integer> PeerLookupRetryIntervalMs = new ConfigKey<>(Integer.class,
-            "cluster.agent.peer.lookup.retry.interval.ms", "Advanced", "200",
-            "Sleep interval in milliseconds between peer lookup retries when forwarding agent commands in a management server cluster.", true);
-
     @Override
     public boolean configure(final String name, final Map<String, Object> xmlParams) throws ConfigurationException {
         _peers = new HashMap<>(7);
@@ -1676,8 +1668,6 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
         keysLst.add(ConnectedAgentThreshold);
         keysLst.add(LoadSize);
         keysLst.add(ScanInterval);
-        keysLst.add(PeerLookupRetryCount);
-        keysLst.add(PeerLookupRetryIntervalMs);
         return keysLst.toArray(new ConfigKey<?>[keysLst.size()]);
     }
 }

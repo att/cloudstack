@@ -238,6 +238,14 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
             false);
     protected final ConfigKey<Integer> RemoteAgentNewConnectionsMonitorInterval = new ConfigKey<>("Advanced", Integer.class, "agent.connections.monitor.interval", "1800",
             "Time in seconds to monitor the new agent connections and cleanup the expired connections.", false);
+
+        protected final ConfigKey<Integer> PeerLookupRetryCount = new ConfigKey<>(Integer.class,
+            "cluster.agent.peer.lookup.retry.count", "Advanced", "1",
+            "Number of retries (in addition to the initial attempt) to resolve the peer management server for a host when forwarding agent commands in a management server cluster.", true);
+
+        protected final ConfigKey<Integer> PeerLookupRetryIntervalMs = new ConfigKey<>(Integer.class,
+            "cluster.agent.peer.lookup.retry.interval.ms", "Advanced", "200",
+            "Sleep interval in milliseconds between peer lookup retries when forwarding agent commands in a management server cluster.", true);
     protected final ConfigKey<Integer> AlertWait = new ConfigKey<>("Advanced", Integer.class, "alert.wait", "1800",
             "Seconds to wait before alerting on a disconnected agent", true);
     protected final ConfigKey<Integer> DirectAgentLoadSize = new ConfigKey<>("Advanced", Integer.class, "direct.agent.load.size", "16",
@@ -790,11 +798,13 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
     }
 
     protected int getAgentSendRetryCount() {
-        return 0;
+        final String value = _configDao != null ? _configDao.getValue("cluster.agent.peer.lookup.retry.count") : null;
+        return NumbersUtil.parseInt(value, 1);
     }
 
     protected int getAgentSendRetryIntervalMs() {
-        return 0;
+        final String value = _configDao != null ? _configDao.getValue("cluster.agent.peer.lookup.retry.interval.ms") : null;
+        return NumbersUtil.parseInt(value, 200);
     }
 
     protected AgentAttache resolveAttacheForRetry(final Long hostId, final AgentAttache current, final boolean forceReload)
@@ -2271,7 +2281,7 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
         return new ConfigKey<?>[] { CheckTxnBeforeSending, Workers, Port, Wait, AlertWait, DirectAgentLoadSize,
                 DirectAgentPoolSize, DirectAgentThreadCap, EnableKVMAutoEnableDisable, ReadyCommandWait,
                 GranularWaitTimeForCommands, RemoteAgentSslHandshakeTimeout, RemoteAgentMaxConcurrentNewConnections,
-                RemoteAgentNewConnectionsMonitorInterval };
+                RemoteAgentNewConnectionsMonitorInterval, PeerLookupRetryCount, PeerLookupRetryIntervalMs };
     }
 
     protected class SetHostParamsListener implements Listener {
