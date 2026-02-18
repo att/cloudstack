@@ -9,7 +9,7 @@ on:
 jobs:
   trigger:
     runs-on:
-      - ubuntu-22.04
+      group: 'Concordia-CKS'
     env:
       target_owner: "${{ secrets.TARGET_OWNER }}"
       target_name: "${{ secrets.TARGET_NAME }}"
@@ -19,6 +19,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+
+      - name: Platform Check
+        run:
+          cat /etc/os-release
 
       - name: Install GitHub CLI (Ubuntu)
         run: |
