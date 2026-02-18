@@ -1,0 +1,44 @@
+name: Trigger Target Workflow
+
+on:
+  push:
+    branches:
+      - "att/**"
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on:
+      - concordia-linux-cpu4-ram14gi
+    env:
+      target_owner: "${{ secrets.TARGET_OWNER }}"
+      target_name: "${{ secrets.TARGET_NAME }}"
+      target_workflow: "${{ secrets.TARGET_WORKFLOW }}"
+      event_type: "${{ secrets.TARGET_EVENT_TYPE }}"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Install DNF Config Manager
+        run: |
+          sudo dnf -y install 'dnf-command(config-manager)'
+
+      - name: Install GitHub CLI
+        run: |
+          sudo dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          sudo dnf -y install gh
+          gh --version
+
+      - name: Authenticate GitHub CLI Using Access Token
+        run: |
+          echo "${{ secrets.TARGET_REPOSITORY_ACCESS_TOKEN }}" | gh auth login --with-token
+          gh auth status
+
+      - name: "Trigger Workflow in Target Repository"
+        run: |
+          gh workflow run \
+            ${{ env.target_workflow }} \
+            --repo ${{ env.target_owner }}/${{ env.target_name }} \
+            --ref 4.22 \
+            ;
