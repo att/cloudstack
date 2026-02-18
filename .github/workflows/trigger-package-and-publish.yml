@@ -20,6 +20,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
+      - name: Install GitHub CLI (Ubuntu)
+        run: |
+          sudo curl -fsSLo /usr/share/keyrings/githubcli-archive-keyring.gpg https://cli.github.com/packages/githubcli-archive-keyring.gpg
+          echo "Types: deb URIs: https://cli.github.com/packages Suites: stable Components: main Architectures: $(dpkg --print-architecture) Signed-By: /usr/share/keyrings/githubcli-archive-keyring.gpg" | sudo tee /etc/apt/sources.list.d/github-cli.sources > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+          gh --version
+
       - name: Install DNF Config Manager
         run: |
           sudo dnf -y install 'dnf-command(config-manager)'
