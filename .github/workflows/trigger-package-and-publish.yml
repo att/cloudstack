@@ -1,4 +1,4 @@
-name: Trigger Target Workflow
+name: Trigger Package and Publish
 
 on:
   push:
@@ -16,8 +16,7 @@ on:
 
 jobs:
   trigger:
-    runs-on:
-      group: "FlexCloud-Rocky"
+    runs-on: concordia-linux-cpu4-ram14gi
     env:
       target_owner: "${{ secrets.TARGET_OWNER }}"
       target_name: "${{ secrets.TARGET_NAME }}"
