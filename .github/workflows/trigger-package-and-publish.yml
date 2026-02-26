@@ -88,6 +88,6 @@ jobs:
           gh workflow run \
             ${{ env.target_workflow }} \
             --repo ${{ env.target_owner }}/${{ env.target_name }} \
-            --ref main \
+            --ref 4.22 \
             --field branch-name=${{ github.ref_name }} \
             ;
