@@ -5,6 +5,14 @@ on:
     branches:
       - "att/**"
   workflow_dispatch:
+    inputs:
+      trigger-type:
+        description: "How to trigger the target workflow"
+        required: true
+        type: choice
+        options:
+        - api
+        - workflow-run
 
 jobs:
   trigger:
@@ -43,7 +51,9 @@ jobs:
           echo "${{ secrets.TARGET_REPOSITORY_ACCESS_TOKEN }}" | gh auth login --with-token
           gh auth status
 
+      # Triggering workflows via the API is meant to be used by external systems.
       - name: Trigger Workflow in Target Repository (api)
+        if: "${{ github.event.inputs.trigger-type == 'api'}}"
         run: |
           event_data=$(cat <<EOM | yq -o json -I 0 '.'
           event_type: "${{ env.event_type }}"
@@ -71,3 +81,14 @@ jobs:
               --input - \
               /repos/${{ env.target_owner }}/${{ env.target_name }}/dispatches \
               ;
+
+      # Triggering workflows via workflow execution is preferred when within the GitHub ecosystem.
+      - name: Trigger Workflow in Target Repository (workflow run)
+        if: "${{ github.event.inputs.trigger-type == 'workflow-run' }}"
+        run: |
+          gh workflow run \
+            ${{ env.target_workflow }} \
+            --repo ${{ env.target_owner }}/${{ env.target_name }} \
+            --ref main \
+            --field branch-name=${{ github.ref_name }} \
+            ;
