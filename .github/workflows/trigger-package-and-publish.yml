@@ -9,7 +9,7 @@ on:
 jobs:
   trigger:
     runs-on:
-      group: 'Concordia-CKS'
+      group: "FlexCloud-Rocky"
     env:
       target_owner: "${{ secrets.TARGET_OWNER }}"
       target_name: "${{ secrets.TARGET_NAME }}"
@@ -20,32 +20,54 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
-      - name: Platform Check
-        run:
-          cat /etc/os-release
-
-      - name: Install GitHub CLI (Ubuntu)
+      - name: Install DNF Config Manager
         run: |
-          (type -p wget >/dev/null || (sudo apt update && sudo apt install wget -y)) \
-            && sudo mkdir -p -m 755 /etc/apt/keyrings \
-            && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-            && sudo mkdir -p -m 755 /etc/apt/sources.list.d \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && sudo apt update \
-            && sudo apt install gh -y
-          gh --version
+          sudo dnf -y install 'dnf-command(config-manager)'
+
+      - name: Install GitHub CLI
+        run: |
+          sudo dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          sudo dnf -y install gh
+
+      - name: Install gettext (for envsubvst)
+        run: |
+          sudo dnf -y install gettext
+
+      - name: Install YQ
+        run: |
+          sudo curl -L -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod a+x /usr/local/bin/yq   
 
       - name: Authenticate GitHub CLI Using Access Token
         run: |
           echo "${{ secrets.TARGET_REPOSITORY_ACCESS_TOKEN }}" | gh auth login --with-token
           gh auth status
 
-      - name: "Trigger Workflow in Target Repository"
+      - name: Trigger Workflow in Target Repository (api)
         run: |
-          gh workflow run \
-            ${{ env.target_workflow }} \
-            --repo ${{ env.target_owner }}/${{ env.target_name }} \
-            --ref 4.22 \
-            ;
+          event_data=$(cat <<EOM | yq -o json -I 0 '.'
+          event_type: "${{ env.event_type }}"
+          client_payload:
+            reference:
+              name: "${{ github.ref_name }}"
+              ref: "${{ github.ref }}"
+              type: "${{ github.ref_type }}"
+              sha: "${{ github.sha }}"
+            repository:
+              name: "${{ github.repository }}"
+              url: "${{ github.repositoryUrl }}"
+            run:
+              id: "${{ github.run_id }}"
+              iteration: "${{ github.run_number }}"
+            workflow:
+              name:  "${{ github.workflow }}"
+              ref: "${{ github.workflow_ref }}"
+              sha: "${{ github.workflow_sha }}"
+          EOM
+          )
+          echo "${event_data}" | \
+            gh api --verbose \
+              -X POST \
+              --input - \
+              /repos/${{ env.target_owner }}/${{ env.target_name }}/dispatches \
+              ;
