@@ -23,6 +23,8 @@ import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.cloud.utils.component.AdapterBase;
 import com.cloud.utils.component.ComponentLifecycle;
@@ -54,6 +56,8 @@ public class ManagementServerNode extends AdapterBase implements SystemIntegrity
 
     // op_lock.mac is varchar(17) and holds the msid, so the id must stay within the 48-bit MAC address range.
     private static final int MSID_BYTES = 6;
+
+    private static final Logger s_logger = LogManager.getLogger(ManagementServerNode.class);
 
     private static String s_nodeIdSource;
     private static final long s_nodeId = initNodeId();
@@ -106,19 +110,35 @@ public class ManagementServerNode extends AdapterBase implements SystemIntegrity
 
     private static long generateIdFromStableIdentity() {
         try {
+
+            // Get variables
             InetAddress localHost = InetAddress.getLocalHost();
+            String identitySysProp = System.getProperty(IDENTITY_SYS_PROP);
+            String identityEnvVar = System.getenv(IDENTITY_ENV_VAR);
+            String explicitIdentity = firstNonBlank(identitySysProp, identityEnvVar);
+            String hostnameEnv = System.getenv(HOSTNAME_ENV_VAR);
+            String podNamespaceEnv = System.getenv(POD_NAMESPACE_ENV_VAR);
+
+            // Resolve node identity
             String nodeIdentity = resolveNodeIdentity(
-                    firstNonBlank(System.getProperty(IDENTITY_SYS_PROP), System.getenv(IDENTITY_ENV_VAR)),
-                    System.getenv(HOSTNAME_ENV_VAR),
-                    System.getenv(POD_NAMESPACE_ENV_VAR),
+                    explicitIdentity,
+                    hostnameEnv,
+                    podNamespaceEnv,
                     localHost.getHostName(),
                     localHost.getCanonicalHostName());
 
+            // Validate node identity
             if (nodeIdentity == null) {
                 throw new CloudRuntimeException("Unable to resolve a stable management server identity");
             }
 
+            // Identity source is used for logging and debugging purposes, so we can see where the identity came from
             s_nodeIdSource = "identity:" + nodeIdentity;
+
+            // Log variables and identify source
+            s_logger.info("Management server node identity variables: source={}, explicitIdentity={}, hostnameEnv={}, podNamespaceEnv={}, detectedHostName={}, canonicalHostName={}",
+                    s_nodeIdSource, explicitIdentity, hostnameEnv, podNamespaceEnv, localHost.getHostName(), localHost.getCanonicalHostName());
+
             return hashNodeIdentity(nodeIdentity);
         } catch (CloudRuntimeException e) {
             throw e;
