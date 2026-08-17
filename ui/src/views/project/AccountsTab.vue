@@ -249,7 +249,6 @@ export default {
           this.dataSource = []
           return
         }
-        
         this.itemCount = itemCount
         this.dataSource = listProjectAccount
       }).catch(error => {
