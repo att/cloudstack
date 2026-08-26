@@ -158,7 +158,8 @@ public class ClusteredAgentAttache extends ConnectedAgentAttache implements Rout
         boolean error = true;
         try {
             while (i++ < 5) {
-                String peerName = s_clusteredAgentMgr.findPeer(_id);
+                final String peerName = s_clusteredAgentMgr.findPeer(_id);
+
                 if (peerName == null) {
                     throw new AgentUnavailableException("Unable to find peer", _id);
                 }
