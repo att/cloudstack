@@ -65,7 +65,7 @@ const vueConfig = {
             ecma: 6,
             mangle: true
           },
-          sourceMap: true
+          sourceMap: false
         })
       ],
       splitChunks: {
@@ -91,10 +91,12 @@ const vueConfig = {
       .set('@layout', resolve('src/layout'))
       .set('@static', resolve('src/static'))
 
-    // do not emit errors as a warning
-    config.module.rule('eslint').use('eslint-loader').tap(
-      opts => ({ ...opts, emitWarning: false })
-    )
+    // do not emit errors as a warning (rule only exists when linting is enabled)
+    if (config.module.rules.has('eslint')) {
+      config.module.rule('eslint').use('eslint-loader').tap(
+        opts => ({ ...opts, emitWarning: false })
+      )
+    }
 
     const svgRule = config.module.rule('svg')
     svgRule.uses.clear()
@@ -159,7 +161,11 @@ const vueConfig = {
     allowedHosts: process.env.ALLOWED_HOSTS ? JSON.parse(process.env.ALLOWED_HOSTS) : undefined
   },
 
-  lintOnSave: undefined,
+  // Skip source-map generation for production/packaging builds (big speed-up)
+  productionSourceMap: false,
+
+  // Lint only in dev; skip eslint-loader during production/packaging builds
+  lintOnSave: process.env.NODE_ENV !== 'production',
 
   // babel-loader no-ignore node_modules/*
   transpileDependencies: [],
