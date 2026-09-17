@@ -467,6 +467,14 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
         return getPeerName(hostId);
     }
 
+    protected int getPeerLookupRetryCount() {
+        return PeerLookupRetryCount.value();
+    }
+
+    protected int getPeerLookupRetryIntervalMs() {
+        return PeerLookupRetryIntervalMs.value();
+    }
+
     public SSLEngine getSSLEngine(final String peerName) {
         return _sslEngines.get(peerName);
     }
@@ -595,6 +603,16 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
     }
 
     @Override
+    protected int getAgentSendRetryCount() {
+        return Math.max(0, getPeerLookupRetryCount());
+    }
+
+    @Override
+    protected int getAgentSendRetryIntervalMs() {
+        return Math.max(0, getPeerLookupRetryIntervalMs());
+    }
+
+    @Override
     public boolean stop() {
         if (_peers != null) {
             for (final SocketChannel ch : _peers.values()) {
@@ -679,13 +697,13 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
                             // But we have the serialize the control commands here so we have
                             // to deserialize this and send it through the agent attache.
                             final Request req = Request.parse(data);
-                            agent.send(req, null);
+                            sendToAgentWithRetry(hostId, agent, req);
                         } else {
                             if (agent instanceof Routable) {
                                 final Routable cluster = (Routable) agent;
                                 cluster.routeToAgent(data);
                             } else {
-                                agent.send(Request.parse(data));
+                                sendToAgentWithRetry(hostId, agent, Request.parse(data));
                             }
                             return;
                         }
@@ -731,6 +749,43 @@ public class ClusteredAgentManagerImpl extends AgentManagerImpl implements Clust
                 throw new TaskExecutionException(message, e);
             }
         }
+    }
+
+    private void sendToAgentWithRetry(final long hostId, final AgentAttache initialAgent, final Request req) throws AgentUnavailableException {
+        final int retries = Math.max(0, getAgentSendRetryCount());
+        final int intervalMs = Math.max(0, getAgentSendRetryIntervalMs());
+
+        AgentAttache agent = initialAgent;
+        AgentUnavailableException last = null;
+
+        for (int attempt = 0; attempt <= retries; attempt++) {
+            if (attempt > 0 && intervalMs > 0) {
+                sleepRetry(intervalMs);
+            }
+
+            try {
+                agent = resolveAttacheForRetry(hostId, agent, attempt > 0);
+            } catch (AgentUnavailableException e) {
+                last = e;
+                continue;
+            }
+
+            if (isForwardWithoutPeer(agent, hostId)) {
+                last = new AgentUnavailableException("Unable to find peer", hostId);
+                agent = null;
+                continue;
+            }
+
+            try {
+                agent.send(req, null);
+                return;
+            } catch (AgentUnavailableException e) {
+                last = e;
+                agent = null;
+            }
+        }
+
+        throw (last != null) ? last : new AgentUnavailableException("agent not logged into this management server", hostId);
     }
 
     @Override
