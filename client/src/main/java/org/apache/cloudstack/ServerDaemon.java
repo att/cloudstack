@@ -90,7 +90,7 @@ public class ServerDaemon implements Daemon {
     private static final int DEFAULT_REQUEST_MAX_FORM_KEYS = 5000;
     private static final String THREADS_MIN = "threads.min";
     private static final String THREADS_MAX = "threads.max";
-    
+
     ////////////////////////////////////////////////////////
     /////////////// Server Configuration ///////////////////
     ////////////////////////////////////////////////////////
