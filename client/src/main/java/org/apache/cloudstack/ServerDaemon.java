@@ -78,6 +78,8 @@ public class ServerDaemon implements Daemon {
     private static final String HTTP_PORT = "http.port";
     private static final String HTTPS_ENABLE = "https.enable";
     private static final String HTTPS_PORT = "https.port";
+    private static final String REQUEST_HEADER_SIZE = "request.header.size";
+    private static final String RESPONSE_HEADER_SIZE = "response.header.size";
     private static final String KEYSTORE_FILE = "https.keystore";
     private static final String KEYSTORE_PASSWORD = "https.keystore.password";
     private static final String WEBAPP_DIR = "webapp.dir";
@@ -88,7 +90,7 @@ public class ServerDaemon implements Daemon {
     private static final int DEFAULT_REQUEST_MAX_FORM_KEYS = 5000;
     private static final String THREADS_MIN = "threads.min";
     private static final String THREADS_MAX = "threads.max";
-
+    
     ////////////////////////////////////////////////////////
     /////////////// Server Configuration ///////////////////
     ////////////////////////////////////////////////////////
@@ -98,6 +100,8 @@ public class ServerDaemon implements Daemon {
     private boolean httpEnable = true;
     private int httpPort = 8080;
     private int httpsPort = 8443;
+    private int requestHeaderSize = 32768;
+    private int responseHeaderSize = 32768;
     private int sessionTimeout = 30;
     private int maxFormContentSize = DEFAULT_REQUEST_CONTENT_SIZE;
     private int maxFormKeys = DEFAULT_REQUEST_MAX_FORM_KEYS;
@@ -144,6 +148,8 @@ public class ServerDaemon implements Daemon {
             setHttpPort(Integer.valueOf(properties.getProperty(HTTP_PORT, "8080")));
             setHttpsEnable(Boolean.valueOf(properties.getProperty(HTTPS_ENABLE, "false")));
             setHttpsPort(Integer.valueOf(properties.getProperty(HTTPS_PORT, "8443")));
+            setRequestHeaderSize(Integer.valueOf(properties.getProperty(REQUEST_HEADER_SIZE, "32768")));
+            setResponseHeaderSize(Integer.valueOf(properties.getProperty(RESPONSE_HEADER_SIZE, "32768")));
             setKeystoreFile(properties.getProperty(KEYSTORE_FILE));
             setKeystorePassword(properties.getProperty(KEYSTORE_PASSWORD));
             setWebAppLocation(properties.getProperty(WEBAPP_DIR));
@@ -189,8 +195,8 @@ public class ServerDaemon implements Daemon {
         httpConfig.setSecureScheme("https");
         httpConfig.setSecurePort(httpsPort);
         httpConfig.setOutputBufferSize(32768);
-        httpConfig.setRequestHeaderSize(8192);
-        httpConfig.setResponseHeaderSize(8192);
+        httpConfig.setRequestHeaderSize(requestHeaderSize);
+        httpConfig.setResponseHeaderSize(responseHeaderSize);
         httpConfig.setSendServerVersion(false);
         httpConfig.setSendDateHeader(false);
         addForwardingCustomiser(httpConfig);
@@ -363,6 +369,14 @@ public class ServerDaemon implements Daemon {
 
     public void setHttpsPort(int httpsPort) {
         this.httpsPort = httpsPort;
+    }
+
+    public void setRequestHeaderSize(int requestHeaderSize) {
+        this.requestHeaderSize = requestHeaderSize;
+    }
+
+    public void setResponseHeaderSize(int responseHeaderSize) {
+        this.responseHeaderSize = responseHeaderSize;
     }
 
     public void setContextPath(String contextPath) {
