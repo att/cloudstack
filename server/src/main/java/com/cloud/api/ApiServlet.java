@@ -317,7 +317,7 @@ public class ApiServlet extends HttpServlet {
 
                     if (apiAuthenticator.getAPIType() == APIAuthenticationType.LOGOUT_API) {
                         if (session == null) {
-                            throw new ServerApiException(ApiErrorCode.PARAM_ERROR, "Session not found for the logout process.");
+                            throw new ServerApiException(ApiErrorCode.UNAUTHORIZED, "Session not found for the logout process.");
                         }
 
                         final Long userId = (Long) session.getAttribute("userid");
