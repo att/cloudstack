@@ -63,7 +63,7 @@ const user = {
     headerNotices: [],
     isLdapEnabled: false,
     cloudian: {},
-    zones: {},
+    zones: [],
     timezoneoffset: 0.0,
     usebrowsertimezone: false,
     domainStore: {},
@@ -344,13 +344,12 @@ const user = {
           })
         } else if (store.getters.loginFlag) {
           const hide = message.loading(i18n.global.t('message.discovering.feature'), 0)
-          getAPI('listZones').then(json => {
+          Promise.all([
+            getAPI('listZones'),
+            getAPI('listApis')
+          ]).then(([json, response]) => {
             const zones = json.listzonesresponse.zone || []
             commit('SET_ZONES', zones)
-          }).catch(error => {
-            reject(error)
-          })
-          getAPI('listApis').then(response => {
             const apis = {}
             const apiList = response.listapisresponse.api
             for (var idx = 0; idx < apiList.length; idx++) {
