@@ -302,7 +302,7 @@ public class ApiServlet extends HttpServlet {
                     try {
                         if (LOGGER.isTraceEnabled()) {
                             LOGGER.trace(String.format("apiAuthenticator.authenticate(%s, params[%d], %s, %s, %s, %s, %s,%s)",
-                                    saveLogString(command), params.size(), session.getId(), remoteAddress.getHostAddress(), saveLogString(responseType), "auditTrailSb", "req", "resp"));
+                                    saveLogString(command), params.size(), session != null ? session.getId() : null, remoteAddress.getHostAddress(), saveLogString(responseType), "auditTrailSb", "req", "resp"));
                         }
                         responseString = apiAuthenticator.authenticate(command, params, session, remoteAddress, responseType, auditTrailSb, req, resp);
                         if (session != null && session.getAttribute(ApiConstants.SESSIONKEY) != null) {
@@ -316,22 +316,20 @@ public class ApiServlet extends HttpServlet {
                     }
 
                     if (apiAuthenticator.getAPIType() == APIAuthenticationType.LOGOUT_API) {
-                        if (session == null) {
-                            throw new ServerApiException(ApiErrorCode.UNAUTHORIZED, "Session not found for the logout process.");
-                        }
+                        if (session != null) {
 
-                        final Long userId = (Long) session.getAttribute("userid");
-                        final Account account = (Account) session.getAttribute("accountobj");
-                        Long accountId = null;
-                        if (account != null) {
-                            accountId = account.getId();
+                            final Long userId = (Long) session.getAttribute("userid");
+                            final Account account = (Account) session.getAttribute("accountobj");
+                            Long accountId = null;
+                            if (account != null) {
+                                accountId = account.getId();
+                            }
+                            auditTrailSb.insert(0, "(userId=" + userId + " accountId=" + accountId + " sessionId=" + session.getId() + ")");
+                            if (userId != null) {
+                                apiServer.logoutUser(userId);
+                            }
+                            invalidateHttpSession(session, "invalidating session after logout call");
                         }
-                        auditTrailSb.insert(0, "(userId=" + userId + " accountId=" + accountId + " sessionId=" + session.getId() + ")");
-                        if (userId != null) {
-                            apiServer.logoutUser(userId);
-                        }
-                        invalidateHttpSession(session, "invalidating session after logout call");
-
                         final Cookie[] cookies = req.getCookies();
                         if (cookies != null) {
                             for (final Cookie cookie : cookies) {
