@@ -98,30 +98,15 @@
 
     <template v-else>
       <a-form-item :label="$t('label.project')" required>
-        <a-select
-          @change="emitChangeEvent"
-          v-model:value="selectedProject"
-          showSearch
-          optionFilterProp="label"
-          :filterOption="
-            (input, option) => {
-              return option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
-          "
-        >
-          <a-select-option v-for="project in projects" :key="project.id" :value="project.id" :label="project.name">
-            <span>
-              <resource-icon
-                v-if="project && project.icon"
-                :image="project.icon.base64image"
-                size="1x"
-                style="margin-right: 5px"
-              />
-              <project-outlined v-else />
-              {{ project.name }}
-            </span>
-          </a-select-option>
-        </a-select>
+        <infinite-scroll-select
+          v-if="!loading"
+          :value="selectedProject"
+          api="listProjects"
+          :apiParams="projectsApiParams"
+          resourceType="project"
+          defaultIcon="project-outlined"
+          :pageSize="100"
+          @change-option-value="changeProject" />
       </a-form-item>
     </template>
   </a-form>
@@ -130,10 +115,11 @@
 <script>
 import { getAPI } from '@/api'
 import ResourceIcon from '@/components/view/ResourceIcon.vue'
+import InfiniteScrollSelect from '@/components/widgets/InfiniteScrollSelect'
 
 export default {
   name: 'OwnershipSelection',
-  components: { ResourceIcon },
+  components: { ResourceIcon, InfiniteScrollSelect },
   data () {
     return {
       domains: [],
@@ -153,6 +139,16 @@ export default {
   },
   created () {
     this.fetchData()
+  },
+  computed: {
+    projectsApiParams () {
+      return {
+        domainid: this.selectedDomain,
+        state: 'Active',
+        details: 'min',
+        isrecursive: false
+      }
+    }
   },
   methods: {
     fetchData () {
@@ -218,20 +214,16 @@ export default {
     },
     fetchProjects () {
       this.loading = true
+      // Only the first page is fetched here; the select pages and searches server-side.
       getAPI('listProjects', {
-        response: 'json',
-        domainId: this.selectedDomain,
-        state: 'Active',
-        showicon: true,
-        details: 'min',
-        isrecursive: false
+        ...this.projectsApiParams,
+        page: 1,
+        pagesize: 100
       })
         .then((response) => {
-          this.projects = response.listprojectsresponse.project
-          if (this.override?.projects && this.projects) {
-            this.projects = this.projects.filter(item => this.override.projects.has(item.id))
-          }
-          this.selectedProject = this.projects?.map(project => project.id)?.includes(this.$store.getters.project?.id) ? this.$store.getters.project?.id : this.projects?.[0]?.id
+          this.projects = response.listprojectsresponse.project || []
+          const currentProjectId = this.$store.getters.project?.id
+          this.selectedProject = currentProjectId && this.$store.getters.project?.domainid === this.selectedDomain ? currentProjectId : this.projects[0]?.id
           this.selectedAccount = null
           this.emitChangeEvent()
         })
@@ -248,6 +240,10 @@ export default {
       } else {
         this.fetchProjects()
       }
+    },
+    changeProject (projectId) {
+      this.selectedProject = projectId
+      this.emitChangeEvent()
     },
     emitChangeEvent () {
       this.$emit('fetch-owner', this)
