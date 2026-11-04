@@ -42,6 +42,10 @@ request.max.form.keys=5000
 https.enable=false
 https.port=8443
 
+# Maximum HTTP request and response header sizes in bytes
+request.header.size=32768
+response.header.size=32768
+
 # The keystore and manager passwords are assumed to be same.
 https.keystore=/etc/cloudstack/management/cloud.jks
 # If you want to encrypt the password itself, follow the steps mentioned at:
